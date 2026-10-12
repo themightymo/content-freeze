@@ -1,4 +1,7 @@
-# Content Freeze Mode — v0.3.1 (staging prototype)
+# Content Freeze Mode — v0.3.2 (staging prototype)
+
+## New in 0.3.2
+- Posts and Pages menus and lists remain available during a freeze, including private content users could already view. Add New links and editing actions are hidden for frozen types. Creation, editing, publishing and deletion remain blocked by permission checks and write guards.
 
 ## New in 0.3.1
 - Adding a frozen category, tag, or custom taxonomy item now displays a Content Freeze error beside the add form instead of failing silently. The item remains blocked; disabling the freeze or letting it expire restores creation.
@@ -22,7 +25,7 @@ Upload `content-freeze-mode.zip` via **Plugins → Add New → Upload Plugin**. 
 ## Important security/coverage limits
 **Not a complete write firewall or database read-only mode.** WordPress has no universal pre-write event for arbitrary plugin SQL or custom endpoints. A custom plugin can bypass these guards using direct SQL, custom database tables, filesystem writes, external APIs or unconventional request handlers. WordPress AJAX and custom REST endpoints are only covered if they use the standard content/taxonomy/metadata APIs or one of the explicitly guarded routes. Some block theme Global Styles (`wp_global_styles`) and theme/plugin configuration paths remain out of scope. Comprehensive WooCommerce and Gravity Forms settings protection needs integration-specific testing; settings-screen switches remain *best effort*. This plugin does not prevent WP-CLI or direct DB changes if they bypass the WordPress APIs.
 
-**Operational considerations:** WooCommerce checkout/orders and Gravity Forms entries should remain writable. Test shared-taxonomy effects, editors, roles, metadata, custom fields and scheduled publications on a nonproduction copy. WordPress post capability primitives are shared across post types in many installations, so freezing one type may make another type noneditable in the UI. Some plugins bypass metadata filters. Direct media attachments and file writes are not frozen by default.
+**Operational considerations:** WooCommerce checkout/orders and Gravity Forms entries should remain writable. Test shared-taxonomy effects, editors, roles, metadata, custom fields and scheduled publications on a nonproduction copy. Publishing and deletion primitives may be shared across post types, so freezing one type may restrict those actions on another type. Some plugins bypass metadata filters. Direct media attachments and file writes are not frozen by default.
 
 ## Test checklist
 1. As administrator and editor: try post/page create, classic edit, Gutenberg edit, Quick Edit, bulk action, trash, delete, autosave and scheduled publishing.

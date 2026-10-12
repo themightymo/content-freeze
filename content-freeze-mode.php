@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Content Freeze Mode
  * Description: Selectively freeze editorial changes while preserving front-end operations.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Update URI: https://github.com/themightymo/content-freeze
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/github-updater.php';
 
 final class CFM_Content_Freeze {
     const OPTION = 'cfm_options';
-    const VERSION = '0.3.1';
+    const VERSION = '0.3.2';
     private static $instance;
     public static function boot() { return self::$instance ?: self::$instance = new self(); }
     private function __construct() {
@@ -30,6 +30,7 @@ final class CFM_Content_Freeze {
         add_filter( 'pre_trash_post', array( $this, 'trash_guard' ), 1, 2 );
         add_filter( 'pre_delete_post', array( $this, 'delete_guard' ), 1, 2 );
         add_action( 'admin_menu', array( $this, 'menu' ) );
+        add_action( 'admin_menu', array( $this, 'hide_frozen_add_new' ), 999 );
         add_action( 'admin_init', array( $this, 'save' ), 1 );
         add_action( 'admin_notices', array( $this, 'notice' ) );
         add_action( 'admin_bar_menu', array( $this, 'bar' ), 100 );
@@ -152,6 +153,10 @@ final class CFM_Content_Freeze {
         echo '</div></div>';
     }
     public function styles() {
+        $screen = get_current_screen();
+        if ( $screen && 'edit' === $screen->base && $this->frozen( $screen->post_type ) ) {
+            echo '<style>.wrap .page-title-action{display:none}</style>';
+        }
         echo '<style>#wpadminbar #wp-admin-bar-cfm-freeze > .ab-item{color:#c7f0ff!important}.cfm-notice{display:flex;gap:12px;align-items:center;border-left:4px solid #56b9e9!important;background:linear-gradient(110deg,#e6f7ff,#f8fdff);padding:12px!important}.cfm-notice-icon{font-size:30px}.cfm-panel{max-width:900px}.cfm-hero{background:linear-gradient(125deg,#086c9b,#88d4ee);color:#fff;border-radius:12px;padding:24px 30px;margin:20px 0;position:relative;overflow:hidden}.cfm-hero h1,.cfm-hero p{color:#fff}.cfm-snow{float:right;font-size:70px;line-height:1}.cfm-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;max-width:850px}.cfm-checks label{background:#fff;padding:12px;border:1px solid #bedbe8;border-radius:8px}</style>';
     }
     public function bar( $bar ) { if ( $this->any_frozen() && is_admin_bar_showing() ) { $bar->add_node( array( 'id' => 'cfm-freeze', 'title' => '❄ Content frozen', 'href' => $this->can_configure() ? admin_url( 'options-general.php?page=content-freeze-mode' ) : false ) ); } }
@@ -162,12 +167,16 @@ final class CFM_Content_Freeze {
             $post = get_post( (int) $args[0] );
             if ( $post && $this->frozen( $post->post_type ) && 'read_post' !== $cap ) { return array( 'do_not_allow' ); }
         }
-        // New-content checks use primitive caps, so intercept only distinct registered type caps.
+        // Preserve editing primitives needed for menus, lists and private-content reads.
+        // Core aliases create_posts to edit_posts; write guards still block creation.
         foreach ( array_unique( array_merge( $this->opts()['types'], array( 'wp_block', 'wp_template', 'wp_template_part', 'wp_navigation' ) ) ) as $type_name ) {
             if ( ! $this->frozen( $type_name ) ) { continue; }
             $type = get_post_type_object( $type_name );
             if ( ! $type ) { continue; }
-            foreach ( array( 'create_posts', 'edit_posts', 'publish_posts', 'edit_others_posts', 'edit_published_posts', 'edit_private_posts', 'delete_posts', 'delete_others_posts', 'delete_published_posts', 'delete_private_posts' ) as $field ) {
+            if ( isset( $type->cap->create_posts, $type->cap->edit_posts ) && $type->cap->create_posts !== $type->cap->edit_posts && $cap === $type->cap->create_posts ) {
+                return array( 'do_not_allow' );
+            }
+            foreach ( array( 'publish_posts', 'delete_posts', 'delete_others_posts', 'delete_published_posts', 'delete_private_posts' ) as $field ) {
                 if ( isset( $type->cap->$field ) && $cap === $type->cap->$field ) {
                     // Shared primitives (e.g. 'edit_posts') also protect other types by design.
                     return array( 'do_not_allow' );
@@ -217,6 +226,14 @@ final class CFM_Content_Freeze {
             || ( ! empty( $o['woo_settings'] ) && 'admin.php' === $script && in_array( $page, array( 'wc-settings', 'wc-admin' ), true ) && ( 'wc-settings' === $page || ( isset( $_GET['path'] ) && false !== strpos( (string) wp_unslash( $_GET['path'] ), '/settings' ) ) ) )
             || ( ! empty( $o['gravity_settings'] ) && 'admin.php' === $script && ( 0 === strpos( $page, 'gf_' ) || in_array( $page, array( 'gf_settings', 'gf_edit_forms', 'gf_form_settings' ), true ) ) );
         if ( $block ) { wp_die( esc_html__( '❄ This settings screen is frozen. No changes were saved.', 'content-freeze-mode' ), 'Content frozen', array( 'response' => 403, 'back_link' => true ) ); }
+    }
+    public function hide_frozen_add_new() {
+        foreach ( get_post_types( array( 'show_ui' => true ), 'objects' ) as $type ) {
+            if ( ! $this->frozen( $type->name ) ) { continue; }
+            $parent = 'post' === $type->name ? 'edit.php' : 'edit.php?post_type=' . $type->name;
+            $new = 'post' === $type->name ? 'post-new.php' : 'post-new.php?post_type=' . $type->name;
+            remove_submenu_page( $parent, $new );
+        }
     }
     public function row_actions( $actions, $post ) {
         if ( $this->frozen( $post->post_type ) ) { foreach ( array( 'edit', 'inline hide-if-no-js', 'trash', 'untrash', 'delete' ) as $key ) { unset( $actions[$key] ); } }
