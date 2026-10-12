@@ -1,4 +1,7 @@
-# Content Freeze Mode — v0.3.2 (staging prototype)
+# Content Freeze Mode — v0.3.3 (staging prototype)
+
+## New in 0.3.3
+- Fixes category, tag and custom taxonomy updates and deletions through WordPress APIs. Frozen terms now reject changes to names, slugs, descriptions and parents before their database update, with a clear Content Freeze message.
 
 ## New in 0.3.2
 - Posts and Pages menus and lists remain available during a freeze, including private content users could already view. Add New links and editing actions are hidden for frozen types. Creation, editing, publishing and deletion remain blocked by permission checks and write guards.

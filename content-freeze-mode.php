@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Content Freeze Mode
  * Description: Selectively freeze editorial changes while preserving front-end operations.
- * Version: 0.3.2
+ * Version: 0.3.3
  * Update URI: https://github.com/themightymo/content-freeze
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/github-updater.php';
 
 final class CFM_Content_Freeze {
     const OPTION = 'cfm_options';
-    const VERSION = '0.3.2';
+    const VERSION = '0.3.3';
     private static $instance;
     public static function boot() { return self::$instance ?: self::$instance = new self(); }
     private function __construct() {
@@ -22,8 +22,8 @@ final class CFM_Content_Freeze {
         add_action( 'cfm_expire_freeze', array( $this, 'maybe_expire' ) );
         add_filter( 'wp_insert_post_data', array( $this, 'post_data_guard' ), 1, 2 );
         add_filter( 'pre_insert_term', array( $this, 'term_insert_guard' ), 1, 2 );
-        add_filter( 'pre_update_term', array( $this, 'term_update_guard' ), 1, 3 );
-        add_filter( 'pre_delete_term', array( $this, 'term_delete_guard' ), 1, 2 );
+        add_action( 'edit_terms', array( $this, 'term_update_guard' ), 1, 2 );
+        add_action( 'pre_delete_term', array( $this, 'term_delete_guard' ), 1, 2 );
         add_filter( 'add_post_metadata', array( $this, 'metadata_add_guard' ), 1, 5 );
         add_filter( 'update_post_metadata', array( $this, 'metadata_update_guard' ), 1, 5 );
         add_filter( 'delete_post_metadata', array( $this, 'metadata_delete_guard' ), 1, 5 );
@@ -82,12 +82,17 @@ final class CFM_Content_Freeze {
     public function term_insert_guard( $term, $taxonomy ) {
         return $this->frozen_taxonomy( $taxonomy ) ? new WP_Error( 'cfm_frozen', 'Content Freeze is active. This category, tag, or taxonomy item cannot be added until the freeze is disabled or expires.' ) : $term;
     }
-    public function term_update_guard( $term_id, $taxonomy, $args ) {
-        return $this->frozen_taxonomy( $taxonomy ) ? new WP_Error( 'cfm_frozen', 'This taxonomy is frozen.' ) : $term_id;
+    public function term_update_guard( $term_id, $taxonomy ) {
+        // edit_terms is an action: returning WP_Error does not stop the write.
+        if ( $this->frozen_taxonomy( $taxonomy ) ) {
+            $this->refuse( 'Content Freeze is active. Categories, tags, and taxonomy items cannot be changed until the freeze is disabled or expires. No changes were saved.' );
+        }
     }
-    public function term_delete_guard( $delete, $term_id ) {
-        $term = get_term( $term_id );
-        return $term && ! is_wp_error( $term ) && $this->frozen_taxonomy( $term->taxonomy ) ? new WP_Error( 'cfm_frozen', 'This taxonomy is frozen.' ) : $delete;
+    public function term_delete_guard( $term_id, $taxonomy ) {
+        // pre_delete_term runs before child terms and relationships are changed.
+        if ( $this->frozen_taxonomy( $taxonomy ) ) {
+            $this->refuse( 'Content Freeze is active. Categories, tags, and taxonomy items cannot be deleted until the freeze is disabled or expires.' );
+        }
     }
     public function metadata_add_guard( $check, $id ) { return $this->frozen( get_post_type( $id ) ) ? false : $check; }
     public function metadata_update_guard( $check, $id ) { return $this->frozen( get_post_type( $id ) ) ? false : $check; }
