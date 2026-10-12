@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Content Freeze Mode
  * Description: Selectively freeze editorial changes while preserving front-end operations.
- * Version: 0.3.4
+ * Version: 0.3.5
  * Update URI: https://github.com/themightymo/content-freeze
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/github-updater.php';
 
 final class CFM_Content_Freeze {
     const OPTION = 'cfm_options';
-    const VERSION = '0.3.4';
+    const VERSION = '0.3.5';
     private static $instance;
     public static function boot() { return self::$instance ?: self::$instance = new self(); }
     private function __construct() {
@@ -162,7 +162,7 @@ final class CFM_Content_Freeze {
         if ( $screen && 'edit' === $screen->base && $this->frozen( $screen->post_type ) ) {
             echo '<style>.wrap .page-title-action{display:none}</style>';
         }
-        echo '<style>#wpadminbar #wp-admin-bar-cfm-freeze > .ab-item{color:#c7f0ff!important}.cfm-notice{display:flex;gap:12px;align-items:center;border-left:4px solid #56b9e9!important;background:linear-gradient(110deg,#e6f7ff,#f8fdff);padding:12px!important}.cfm-notice-icon{font-size:30px}.cfm-panel{max-width:900px}.cfm-hero{background:linear-gradient(125deg,#086c9b,#88d4ee);color:#fff;border-radius:12px;padding:24px 30px;margin:20px 0;position:relative;overflow:hidden}.cfm-hero h1,.cfm-hero p{color:#fff}.cfm-snow{float:right;font-size:70px;line-height:1}.cfm-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;max-width:850px}.cfm-checks label{background:#fff;padding:12px;border:1px solid #bedbe8;border-radius:8px}</style>';
+        echo '<style>#wpadminbar #wp-admin-bar-cfm-freeze > .ab-item{color:#c7f0ff!important}.cfm-notice{color:#1d2327;display:flex;gap:12px;align-items:center;border-left:4px solid #56b9e9!important;background:linear-gradient(110deg,#e6f7ff,#f8fdff);padding:12px!important}.cfm-notice-icon{font-size:30px}.cfm-panel{max-width:900px}.cfm-hero{background:linear-gradient(125deg,#086c9b,#245a73);color:#fff;border-radius:12px;padding:24px 30px;margin:20px 0;position:relative;overflow:hidden}.cfm-hero h1,.cfm-hero p{color:#fff}.cfm-hero .notice,.cfm-hero .notice p{color:#1d2327}.cfm-notice a{color:#135e96}.cfm-notice a:hover,.cfm-notice a:focus{color:#0a4b78}.cfm-snow{float:right;font-size:70px;line-height:1}.cfm-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;max-width:850px}.cfm-checks label{background:#fff;padding:12px;border:1px solid #bedbe8;border-radius:8px}</style>';
     }
     public function bar( $bar ) { if ( $this->any_frozen() && is_admin_bar_showing() ) { $bar->add_node( array( 'id' => 'cfm-freeze', 'title' => '❄ Content frozen', 'href' => $this->can_configure() ? admin_url( 'options-general.php?page=content-freeze-mode' ) : false ) ); } }
     public function capabilities( $caps, $cap, $user_id, $args ) {

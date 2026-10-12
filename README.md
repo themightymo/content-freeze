@@ -1,4 +1,7 @@
-# Content Freeze Mode — v0.3.4 (staging prototype)
+# Content Freeze Mode — v0.3.5 (staging prototype)
+
+## New in 0.3.5
+- Improves settings-screen contrast: notices use dark text on light backgrounds, and the header gradient stays dark enough for white text.
 
 ## New in 0.3.4
 - Restores Preview links for frozen drafts, pending posts and scheduled content to users who normally have permission to preview them. Signed front-end GET previews preserve normal permissions for that item only; creation, saves, deletion, AJAX and REST writes remain blocked.
