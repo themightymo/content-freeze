@@ -1,4 +1,7 @@
-# Content Freeze Mode — v0.3.0 (staging prototype)
+# Content Freeze Mode — v0.3.1 (staging prototype)
+
+## New in 0.3.1
+- Adding a frozen category, tag, or custom taxonomy item now displays a Content Freeze error beside the add form instead of failing silently. The item remains blocked; disabling the freeze or letting it expire restores creation.
 
 ## New in 0.3
 - Checks the plugin's Version header on GitHub's `main` branch every six hours through WordPress's plugin update checks. Newer versions appear in **Plugins** and **Dashboard → Updates**, with the standard **Update now** action.

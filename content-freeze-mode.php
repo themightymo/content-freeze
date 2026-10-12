@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Content Freeze Mode
  * Description: Selectively freeze editorial changes while preserving front-end operations.
- * Version: 0.3.0
+ * Version: 0.3.1
  * Update URI: https://github.com/themightymo/content-freeze
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/github-updater.php';
 
 final class CFM_Content_Freeze {
     const OPTION = 'cfm_options';
-    const VERSION = '0.3.0';
+    const VERSION = '0.3.1';
     private static $instance;
     public static function boot() { return self::$instance ?: self::$instance = new self(); }
     private function __construct() {
@@ -79,7 +79,7 @@ final class CFM_Content_Freeze {
         return $data;
     }
     public function term_insert_guard( $term, $taxonomy ) {
-        return $this->frozen_taxonomy( $taxonomy ) ? new WP_Error( 'cfm_frozen', 'This taxonomy is frozen.' ) : $term;
+        return $this->frozen_taxonomy( $taxonomy ) ? new WP_Error( 'cfm_frozen', 'Content Freeze is active. This category, tag, or taxonomy item cannot be added until the freeze is disabled or expires.' ) : $term;
     }
     public function term_update_guard( $term_id, $taxonomy, $args ) {
         return $this->frozen_taxonomy( $taxonomy ) ? new WP_Error( 'cfm_frozen', 'This taxonomy is frozen.' ) : $term_id;
@@ -209,7 +209,9 @@ final class CFM_Content_Freeze {
             $action = isset( $_REQUEST['action'] ) && is_scalar( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
             $target = isset( $_REQUEST['post_id'] ) ? absint( $_REQUEST['post_id'] ) : ( isset( $_REQUEST['post_ID'] ) ? absint( $_REQUEST['post_ID'] ) : 0 );
             if ( $target && $this->frozen( get_post_type( $target ) ) ) { $this->refuse( 'This item cannot be changed through AJAX.' ); }
-            if ( in_array( $action, array( 'add-tag', 'delete-tag', 'inline-save-tax' ), true ) && isset( $_REQUEST['taxonomy'] ) && $this->frozen_taxonomy( sanitize_key( wp_unslash( $_REQUEST['taxonomy'] ) ) ) ) { $this->refuse( 'This taxonomy is frozen.' ); }
+            // Core's add-tag handler turns term_insert_guard's WP_Error into the XML
+            // response tags.js displays beside the form. A 403 here fails silently.
+            if ( in_array( $action, array( 'delete-tag', 'inline-save-tax' ), true ) && isset( $_REQUEST['taxonomy'] ) && $this->frozen_taxonomy( sanitize_key( wp_unslash( $_REQUEST['taxonomy'] ) ) ) ) { $this->refuse( 'This taxonomy is frozen.' ); }
         }
         $block = ( ! empty( $o['settings'] ) && in_array( $script, $core_pages, true ) )
             || ( ! empty( $o['woo_settings'] ) && 'admin.php' === $script && in_array( $page, array( 'wc-settings', 'wc-admin' ), true ) && ( 'wc-settings' === $page || ( isset( $_GET['path'] ) && false !== strpos( (string) wp_unslash( $_GET['path'] ), '/settings' ) ) ) )
