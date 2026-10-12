@@ -1,4 +1,10 @@
-# Content Freeze Mode — v0.2.0 (staging prototype)
+# Content Freeze Mode — v0.3.0 (staging prototype)
+
+## New in 0.3
+- Checks the plugin's Version header on GitHub's `main` branch every six hours through WordPress's plugin update checks. Newer versions appear in **Plugins** and **Dashboard → Updates**, with the standard **Update now** action.
+- Downloads updates from this repository's `main` ZIP and preserves the installed plugin directory name. GitHub/network failures retry after 15 minutes and do not block normal plugin use.
+- Use **Dashboard → Updates → Check again** to bypass the GitHub cache. Only users allowed to update plugins can force this check.
+- To publish an update, increase both the plugin header version and `CFM_Content_Freeze::VERSION`, then push the complete working plugin to `main`. Install 0.3.0 manually once to enable future GitHub updates. Checks contact `raw.githubusercontent.com`; updates download from GitHub.
 
 Upload `content-freeze-mode.zip` via **Plugins → Add New → Upload Plugin**. Activate, then go to **Settings → ❄ Content Freeze**. Only users with `manage_options` (normally administrators) can view/save configuration. On first activation, freeze is enabled for posts and pages. Existing preferences remain in place on reactivation.
 
