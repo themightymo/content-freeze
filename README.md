@@ -1,4 +1,7 @@
-# Content Freeze Mode — v0.3.3 (staging prototype)
+# Content Freeze Mode — v0.3.4 (staging prototype)
+
+## New in 0.3.4
+- Restores Preview links for frozen drafts, pending posts and scheduled content to users who normally have permission to preview them. Signed front-end GET previews preserve normal permissions for that item only; creation, saves, deletion, AJAX and REST writes remain blocked.
 
 ## New in 0.3.3
 - Fixes category, tag and custom taxonomy updates and deletions through WordPress APIs. Frozen terms now reject changes to names, slugs, descriptions and parents before their database update, with a clear Content Freeze message.

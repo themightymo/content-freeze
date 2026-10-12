@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Content Freeze Mode
  * Description: Selectively freeze editorial changes while preserving front-end operations.
- * Version: 0.3.3
+ * Version: 0.3.4
  * Update URI: https://github.com/themightymo/content-freeze
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -13,7 +13,7 @@ require_once __DIR__ . '/includes/github-updater.php';
 
 final class CFM_Content_Freeze {
     const OPTION = 'cfm_options';
-    const VERSION = '0.3.3';
+    const VERSION = '0.3.4';
     private static $instance;
     public static function boot() { return self::$instance ?: self::$instance = new self(); }
     private function __construct() {
@@ -170,7 +170,12 @@ final class CFM_Content_Freeze {
         // Object-level permissions cover classic editor, Gutenberg, REST and many integrations.
         if ( in_array( $cap, array( 'edit_post', 'delete_post', 'read_post', 'publish_post', 'edit_page', 'delete_page' ), true ) && ! empty( $args[0] ) ) {
             $post = get_post( (int) $args[0] );
-            if ( $post && $this->frozen( $post->post_type ) && 'read_post' !== $cap ) { return array( 'do_not_allow' ); }
+            if ( $post && $this->frozen( $post->post_type ) && 'read_post' !== $cap ) {
+                // Only restore normal permissions for this signed front-end GET preview.
+                // Saves remain protected by the independent post/metadata write guards.
+                if ( in_array( $cap, array( 'edit_post', 'edit_page' ), true ) && $this->is_frozen_preview( $post->ID, $user_id ) ) { return $caps; }
+                return array( 'do_not_allow' );
+            }
         }
         // Preserve editing primitives needed for menus, lists and private-content reads.
         // Core aliases create_posts to edit_posts; write guards still block creation.
@@ -240,8 +245,28 @@ final class CFM_Content_Freeze {
             remove_submenu_page( $parent, $new );
         }
     }
+    private function is_frozen_preview( $post_id, $user_id ) {
+        if ( is_admin() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || 'GET' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || (int) $user_id !== get_current_user_id() ) { return false; }
+        if ( ! isset( $_GET['preview'], $_GET['cfm_preview'], $_GET['cfm_preview_nonce'] ) || 'true' !== $_GET['preview'] || ! is_scalar( $_GET['cfm_preview'] ) || ! is_string( $_GET['cfm_preview_nonce'] ) ) { return false; }
+        return (int) $post_id === absint( $_GET['cfm_preview'] ) && wp_verify_nonce( wp_unslash( $_GET['cfm_preview_nonce'] ), 'cfm_preview_' . $post_id );
+    }
+    private function normally_can_preview( $post ) {
+        // Check the user's ordinary edit permission without granting new access.
+        remove_filter( 'map_meta_cap', array( $this, 'capabilities' ), 999 );
+        try { return current_user_can( 'edit_post', $post->ID ); }
+        finally { add_filter( 'map_meta_cap', array( $this, 'capabilities' ), 999, 4 ); }
+    }
     public function row_actions( $actions, $post ) {
-        if ( $this->frozen( $post->post_type ) ) { foreach ( array( 'edit', 'inline hide-if-no-js', 'trash', 'untrash', 'delete' ) as $key ) { unset( $actions[$key] ); } }
+        if ( $this->frozen( $post->post_type ) ) {
+            foreach ( array( 'edit', 'inline hide-if-no-js', 'trash', 'untrash', 'delete' ) as $key ) { unset( $actions[$key] ); }
+            if ( in_array( $post->post_status, array( 'draft', 'pending', 'future' ), true ) && is_post_type_viewable( get_post_type_object( $post->post_type ) ) && $this->normally_can_preview( $post ) ) {
+                $url = get_preview_post_link( $post, array(
+                    'cfm_preview' => $post->ID,
+                    'cfm_preview_nonce' => wp_create_nonce( 'cfm_preview_' . $post->ID ),
+                ) );
+                $actions['view'] = '<a href="' . esc_url( $url ) . '" rel="bookmark" aria-label="' . esc_attr( sprintf( __( 'Preview “%s”', 'content-freeze-mode' ), get_the_title( $post ) ) ) . '">' . esc_html__( 'Preview', 'content-freeze-mode' ) . '</a>';
+            }
+        }
         return $actions;
     }
     public function bulk_actions_posts( $actions ) { return $this->frozen( 'post' ) ? array() : $actions; }
